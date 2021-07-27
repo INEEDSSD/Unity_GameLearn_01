@@ -7,6 +7,9 @@ public class ActorController : MonoBehaviour
     public GameObject model;    // 引用模型对象
     public PlayerInput playerInput;    // 引用输入模块
     public float walkSpeed; // 移动速度用来设置与动画的播放速度匹配
+    public float runMultiply = 3.0f;
+    public float runDefault = 1.0f;
+
     [SerializeField]  // 序列化下,能够序列化的只能是unity的组件内容
     private Animator anim;  // 引用动画控制器
     private Rigidbody rigid;    // 引用刚体
@@ -46,15 +49,21 @@ public class ActorController : MonoBehaviour
         //                    |
         //                    |
         //                    |
-        anim.SetFloat("forward", playerInput.DMag);
+
+        // 实现动作切换的缓动效果
+        float animRunMulti = (playerInput.isRun ? 2.0f : 1.0f);
+        float animForwardValue = anim.GetFloat("forward");
+        anim.SetFloat("forward", playerInput.DMag * Mathf.Lerp(animForwardValue, animRunMulti, 0.5f));
         // 处理因为松开按键导致的模型朝向突变的问题
         if (playerInput.DMag > 0.1f)
         {
             // 转换模型的朝向 标量 * 单位向量, 两个向量的和
-            model.transform.forward = playerInput.DVec;
+            // 处理模型转换过快的问题，使用Slerp外插值，球面内插值
+            Vector3 targetForward = Vector3.Slerp(model.transform.forward, playerInput.DVec, 0.3f);
+            model.transform.forward = targetForward;
         }
-
-        MovingVec = playerInput.DMag * model.transform.forward * walkSpeed;
+        // 标量 * 前向量 * 走动速度 * 跑动速度
+        MovingVec = playerInput.DMag * model.transform.forward * walkSpeed * (playerInput.isRun ? runMultiply : runDefault);
     }
 
     private void FixedUpdate()
